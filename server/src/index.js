@@ -24,9 +24,27 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
+// Validate critical environment variables
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.error('❌ ERROR: JWT_SECRET environment variable is not set!');
+  console.error('Please set JWT_SECRET to a secure random string.');
+  process.exit(1);
+}
+
+if (!process.env.MONGODB_URI && process.env.NODE_ENV === 'production') {
+  console.error('❌ ERROR: MONGODB_URI environment variable is not set!');
+  console.error('Please configure MONGODB_URI with your MongoDB connection string.');
+  process.exit(1);
+}
+
+console.log(`⚡ Configuring CORS for: ${CLIENT_URL}`);
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: CLIENT_URL,
     credentials: true,
   },
 });
@@ -46,7 +64,7 @@ io.on('connection', (socket) => {
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: CLIENT_URL,
     credentials: true,
   })
 );
@@ -54,7 +72,12 @@ app.use(express.json({ limit: '2mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, name: 'Zyvex Classroom API' });
+  res.json({ 
+    ok: true, 
+    name: 'Zyvex Classroom API',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.use('/api/auth', authRoutes);
@@ -72,17 +95,22 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', userRoutes);
 
 app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(500).json({ message: err.message || 'Server error' });
+  console.error('❌ Server error:', err);
+  res.status(500).json({ 
+    message: err.message || 'Server error',
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+  });
 });
 
 connectDb()
   .then(() => {
     server.listen(PORT, () => {
-      console.log(`Zyvex Classroom server on port ${PORT}`);
+      console.log(`✅ Zyvex Classroom server running on port ${PORT}`);
+      console.log(`🔗 CORS enabled for: ${CLIENT_URL}`);
     });
   })
   .catch((e) => {
+    console.error('❌ Failed to start server:', e.message);
     console.error(e);
     process.exit(1);
   });

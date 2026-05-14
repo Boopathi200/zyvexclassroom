@@ -6,7 +6,11 @@ const { protect } = require('../middleware/auth');
 const router = express.Router();
 
 function signToken(id) {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+  return jwt.sign({ id }, secret, { expiresIn: '30d' });
 }
 
 router.post('/register', async (req, res) => {
@@ -35,7 +39,11 @@ router.post('/register', async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message || 'Server error' });
+    console.error('Registration error:', err);
+    res.status(500).json({ 
+      message: err.message || 'Server error',
+      details: process.env.NODE_ENV !== 'production' ? err.message : undefined
+    });
   }
 });
 
@@ -60,7 +68,11 @@ router.post('/login', async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message || 'Server error' });
+    console.error('Login error:', err);
+    res.status(500).json({ 
+      message: err.message || 'Server error',
+      details: process.env.NODE_ENV !== 'production' ? err.message : undefined
+    });
   }
 });
 
