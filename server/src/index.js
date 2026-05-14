@@ -62,9 +62,21 @@ io.on('connection', (socket) => {
   });
 });
 
+const allowedOrigins = [
+  CLIENT_URL,
+  'http://localhost:5173',
+  'https://zyvexclassroom.vercel.app'
+];
+
 app.use(
   cors({
-    origin: CLIENT_URL,
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   })
 );
