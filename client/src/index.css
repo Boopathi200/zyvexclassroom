@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply bg-stone-50 text-zinc-900 dark:bg-zyvex-black dark:text-zinc-100 font-body min-h-screen transition-colors duration-300;
+  }
+}
+
+@layer utilities {
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-zyvex-goldlight via-zyvex-gold to-zyvex-goldlight bg-clip-text text-transparent;
+  }
+}
