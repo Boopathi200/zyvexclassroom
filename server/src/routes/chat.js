@@ -48,9 +48,18 @@ async function openAiReply(message, history, user) {
     const { default: OpenAI } = await import('openai');
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const system = `You are Zyvex Classroom, a premium LMS assistant. The user role is "${user.role}". Be concise, friendly, and actionable. When pointing to UI, use short paths like /dashboard, /dashboard/schedule, /dashboard/analytics, /dashboard/settings. Never invent grades; explain where to find them in the app.`;
+    const safeHistory = Array.isArray(history)
+      ? history
+          .slice(-10)
+          .filter((h) => h && typeof h.content === 'string')
+          .map((h) => ({
+            role: h.role === 'assistant' ? 'assistant' : 'user',
+            content: h.content.slice(0, 4000),
+          }))
+      : [];
     const messages = [
       { role: 'system', content: system },
-      ...(history || []).slice(-10).map((h) => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content })),
+      ...safeHistory,
       { role: 'user', content: message },
     ];
     const completion = await openai.chat.completions.create({
