@@ -36,7 +36,8 @@ export default function Login() {
             <label className="block text-xs font-medium text-zinc-400 mb-1">Email</label>
             <input
               className="w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2.5 text-sm outline-none focus:border-zyvex-gold/50"
-              type="email"
+              type="text"
+              inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
