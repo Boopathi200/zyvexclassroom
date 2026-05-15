@@ -19,6 +19,7 @@ const liveSessionRoutes = require('./routes/liveSessions');
 const videoRoutes = require('./routes/videos');
 const analyticsRoutes = require('./routes/analytics');
 const userRoutes = require('./routes/users');
+const demoRoutes = require('./demoRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -30,15 +31,7 @@ const allowedOrigins = CLIENT_URL.split(',')
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
-  console.error('ERROR: JWT_SECRET environment variable is not set.');
-  console.error('Please set JWT_SECRET to a secure random string.');
-  process.exit(1);
-}
-
-if (!process.env.MONGODB_URI && process.env.NODE_ENV === 'production') {
-  console.error('ERROR: MONGODB_URI environment variable is not set.');
-  console.error('Please configure MONGODB_URI with your MongoDB connection string.');
-  process.exit(1);
+  console.warn('JWT_SECRET is not set. Demo mode will use an ephemeral fallback secret.');
 }
 
 console.log(`Configuring CORS for: ${allowedOrigins.join(', ')}`);
@@ -83,23 +76,29 @@ app.get('/api/health', (_req, res) => {
     ok: true,
     name: 'Zyvex Classroom API',
     environment: process.env.NODE_ENV || 'development',
+    database: process.env.MONGODB_URI ? 'mongodb' : 'demo',
     timestamp: new Date().toISOString(),
   });
 });
 
-app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/classrooms', classroomRoutes);
-app.use('/api/assignments', assignmentRoutes);
-app.use('/api/quizzes', quizRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/marks', markRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/live-sessions', liveSessionRoutes);
-app.use('/api/videos', videoRoutes);
-app.use('/api/analytics', analyticsRoutes);
-app.use('/api/users', userRoutes);
+if (!process.env.MONGODB_URI) {
+  console.warn('MONGODB_URI is not set. Starting in demo persistence mode.');
+  app.use('/api', demoRoutes);
+} else {
+  app.use('/api/auth', authRoutes);
+  app.use('/api/admin', adminRoutes);
+  app.use('/api/classrooms', classroomRoutes);
+  app.use('/api/assignments', assignmentRoutes);
+  app.use('/api/quizzes', quizRoutes);
+  app.use('/api/attendance', attendanceRoutes);
+  app.use('/api/marks', markRoutes);
+  app.use('/api/notifications', notificationRoutes);
+  app.use('/api/chat', chatRoutes);
+  app.use('/api/live-sessions', liveSessionRoutes);
+  app.use('/api/videos', videoRoutes);
+  app.use('/api/analytics', analyticsRoutes);
+  app.use('/api/users', userRoutes);
+}
 
 app.use((err, _req, res, _next) => {
   console.error('Server error:', err);
@@ -109,15 +108,21 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-connectDb()
-  .then(() => {
-    server.listen(PORT, () => {
-      console.log(`Zyvex Classroom server running on port ${PORT}`);
-      console.log(`CORS enabled for: ${allowedOrigins.join(', ')}`);
-    });
-  })
-  .catch((e) => {
-    console.error('Failed to start server:', e.message);
-    console.error(e);
-    process.exit(1);
+const startServer = () => {
+  server.listen(PORT, () => {
+    console.log(`Zyvex Classroom server running on port ${PORT}`);
+    console.log(`CORS enabled for: ${allowedOrigins.join(', ')}`);
   });
+};
+
+if (process.env.MONGODB_URI) {
+  connectDb()
+    .then(startServer)
+    .catch((e) => {
+      console.error('Failed to start server:', e.message);
+      console.error(e);
+      process.exit(1);
+    });
+} else {
+  startServer();
+}
